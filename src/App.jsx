@@ -305,7 +305,7 @@ function About() {
               {[
                 { label: "Institution", val: "United International University" },
                 { label: "Degree", val: "B.Sc. CSE — Data Science" },
-                { label: "CGPA", val: "3.69 / 4.00 — Top 10%" },
+                { label: "CGPA", val: "3.69 / 4.00" },
                 { label: "IELTS", val: "Band 6.5" },
                 { label: "Location", val: "Dhaka, Bangladesh" },
                 { label: "Status", val: "Open to Opportunities" },
