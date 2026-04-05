@@ -24,15 +24,19 @@ const useInView = (threshold = 0.12) => {
 const useActiveSection = () => {
   const [active, setActive] = useState("hero");
   useEffect(() => {
-    const sections = document.querySelectorAll("section[id]");
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
-      },
-      { threshold: 0.3 }
-    );
-    sections.forEach(s => obs.observe(s));
-    return () => obs.disconnect();
+    const ids = ["hero", "about", "skills", "projects", "experience", "research", "awards", "contact"];
+    const onScroll = () => {
+      const scrollY = window.scrollY + 80; // offset for nav height
+      let current = "hero";
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && el.offsetTop <= scrollY) current = id;
+      }
+      setActive(current);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
   return active;
 };
@@ -52,6 +56,7 @@ const Reveal = ({ children, delay = 0, from = "bottom" }) => {
       opacity: visible ? 1 : 0,
       transform,
       transition: `opacity 0.75s cubic-bezier(.16,1,.3,1) ${delay}s, transform 0.75s cubic-bezier(.16,1,.3,1) ${delay}s`,
+      height: "100%",
     }}>
       {children}
     </div>
@@ -141,8 +146,14 @@ function Nav() {
       padding: "0 2.5rem",
     }}>
       <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 66 }}>
-        <a href="#hero" style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "1.2rem", color: "#fff", textDecoration: "none", letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: "2px" }}>
-          R<span style={{ color: CYAN, fontSize: "1.6rem", lineHeight: 1 }}>.</span>
+        <a href="#hero" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="36" height="36" rx="8" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.25)" strokeWidth="1"/>
+            <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle"
+              fontFamily="'Syne', sans-serif" fontWeight="800" fontSize="18" fill="#00e5ff"
+              letterSpacing="-1">R</text>
+            <circle cx="28" cy="28" r="3" fill="#00e5ff" opacity="0.9"/>
+          </svg>
         </a>
         <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }} className="nav-links">
           {links.map(l => (
@@ -281,7 +292,7 @@ function About() {
     <section id="about" style={sec()}>
       <div style={wrap()}>
         <Reveal><SLabel>About Me</SLabel></Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", marginTop: "2.5rem" }}>
+        <div className="about-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", marginTop: "2.5rem" }}>
           <Reveal delay={0.1}>
             <STitle>Who I Am</STitle>
             <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.95rem", color: "rgba(255,255,255,0.55)", lineHeight: 1.9, marginTop: "1.25rem" }}>{data.about}</p>
@@ -324,10 +335,10 @@ function Skills() {
       <div style={wrap()}>
         <Reveal><SLabel>Capabilities</SLabel></Reveal>
         <Reveal delay={0.08}><STitle>Technical Skills</STitle></Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "1.1rem", marginTop: "2.75rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "1.1rem", marginTop: "2.75rem", alignItems: "stretch" }}>
           {data.skills.map((s, i) => (
             <Reveal key={s.category} delay={i * 0.06}>
-              <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "1.6rem", transition: "all 0.3s" }}
+              <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "1.6rem", transition: "all 0.3s", height: "100%" }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(0,229,255,0.3)"; e.currentTarget.style.background = "rgba(0,229,255,0.04)"; e.currentTarget.style.transform = "translateY(-3px)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "rgba(255,255,255,0.025)"; e.currentTarget.style.transform = "none"; }}
               >
@@ -378,7 +389,7 @@ function Projects() {
         </Reveal>
 
         {data.projects.map((p, i) => i !== active ? null : (
-          <div key={p.name} style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+          <div key={p.name} className="projects-grid" style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
             {/* browser mockup */}
             <Reveal delay={0.05} from="left">
               <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, overflow: "hidden" }}>
@@ -523,7 +534,7 @@ function Awards() {
         <Reveal><SLabel>Recognition</SLabel></Reveal>
         <Reveal delay={0.08}><STitle>Awards & Competitions</STitle></Reveal>
 
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem", marginTop: "2.75rem" }}>
+        <div className="awards-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem", marginTop: "2.75rem" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
             {data.awards.map((a, i) => (
               <Reveal key={i} delay={i * 0.07}>
@@ -653,6 +664,9 @@ export default function App() {
         @media (max-width: 768px) {
           .nav-links { display: none !important; }
           .hamburger { display: flex !important; }
+          .about-grid { grid-template-columns: 1fr !important; gap: 2rem !important; }
+          .awards-grid { grid-template-columns: 1fr !important; }
+          .projects-grid { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 640px) {
           section { padding: 4rem 1.25rem !important; }
