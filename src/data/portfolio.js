@@ -18,7 +18,7 @@ export const data = {
     institution: "United International University",
     degree: "B.Sc. Computer Science & Engineering",
     major: "Major: Data Science",
-    cgpa: "3.69 / 4.00 — Top 10%",
+    cgpa: "3.69 / 4.00",
     location: "Dhaka, Bangladesh",
   },
 
