@@ -137,18 +137,30 @@ export default function Chatbot() {
         content: m.text,
       }));
 
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system: SYSTEM_PROMPT, messages: apiMessages }),
-      });
-
-      const responseData = await res.json();
+      // Retry up to 3 times if Gemini is overloaded
+      let res, responseData;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ system: SYSTEM_PROMPT, messages: apiMessages }),
+        });
+        responseData = await res.json();
+        if (res.ok) break;
+        const msg = (responseData.error || "").toLowerCase();
+        const isOverload = msg.includes("high demand") || msg.includes("overload") || res.status === 503;
+        if (!isOverload || attempt === 3) break;
+        await new Promise(r => setTimeout(r, 1200 * attempt));
+      }
 
       if (!res.ok) {
+        const msg = (responseData.error || "").toLowerCase();
+        const isOverload = msg.includes("high demand") || msg.includes("overload") || res.status === 503;
         setMessages(prev => [...prev, {
           role: "assistant",
-          text: `Something went wrong: ${responseData.error || res.status}. Check that ANTHROPIC_API_KEY is set in Vercel environment variables.`,
+          text: isOverload
+            ? "The AI is a bit busy right now — please try again in a moment!"
+            : `Error: ${responseData.error || res.status}`,
         }]);
         return;
       }
@@ -371,7 +383,7 @@ export default function Chatbot() {
               </button>
             </div>
             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.53rem", color: "rgba(255,255,255,0.16)", textAlign: "center", marginTop: 7, letterSpacing: "0.06em" }}>
-              POWERED BY CLAUDE · ENTER TO SEND
+              POWERED BY GEMINI · ENTER TO SEND
             </div>
           </div>
         </div>
