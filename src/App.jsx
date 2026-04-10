@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { data } from "./data/portfolio";
+import Chatbot from "./Chatbot";
 
 const CYAN = "#00e5ff";
 const BG = "#08080c";
@@ -683,6 +684,7 @@ export default function App() {
         <Awards />
         <Contact />
       </main>
+      <Chatbot />
       <footer style={{ borderTop: "1px solid rgba(255,255,255,0.05)", padding: "2rem 2.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.18)", letterSpacing: "0.1em" }}>© {new Date().getFullYear()} REDWAN AHMED UTSAB</span>
         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.18)", letterSpacing: "0.1em" }}>BUILT WITH REACT · DEPLOYED ON VERCEL</span>
