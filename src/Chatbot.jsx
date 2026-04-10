@@ -53,6 +53,40 @@ const QUICK_QUESTIONS = [
   "What are his awards?",
 ];
 
+/* ── AI AGENT SVG ICON ─────────────────────────────────────────────── */
+function AgentIcon({ size = 22, color = "#000" }) {
+  const inner = color === "#000" ? "white" : BG;
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="9" y="11" width="18" height="15" rx="5" fill={color} />
+      <line x1="18" y1="11" x2="18" y2="6" stroke={color} strokeWidth="2.2" strokeLinecap="round"/>
+      <circle cx="18" cy="4.5" r="2" fill={color}/>
+      <circle cx="13.5" cy="17.5" r="2.2" fill={inner}/>
+      <circle cx="22.5" cy="17.5" r="2.2" fill={inner}/>
+      <circle cx="13.5" cy="18" r="0.9" fill={color}/>
+      <circle cx="22.5" cy="18" r="0.9" fill={color}/>
+      <rect x="13.5" y="22.5" width="9" height="1.8" rx="0.9" fill={inner} opacity="0.85"/>
+      <rect x="5" y="15.5" width="4" height="5" rx="2" fill={color}/>
+      <rect x="27" y="15.5" width="4" height="5" rx="2" fill={color}/>
+    </svg>
+  );
+}
+
+/* ── AGENT AVATAR ──────────────────────────────────────────────────── */
+function AgentAvatar({ size = 26 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%",
+      background: "linear-gradient(135deg, rgba(0,229,255,0.15), rgba(0,80,100,0.3))",
+      border: "1px solid rgba(0,229,255,0.28)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      flexShrink: 0,
+    }}>
+      <AgentIcon size={size * 0.62} color={CYAN} />
+    </div>
+  );
+}
+
 /* ── TYPING INDICATOR ──────────────────────────────────────────────── */
 function TypingDots() {
   return (
@@ -71,12 +105,9 @@ function TypingDots() {
 /* ── CHATBOT WIDGET ────────────────────────────────────────────────── */
 export default function Chatbot() {
   const [open, setOpen] = useState(false);
-  const [phase, setPhase] = useState("quick"); // "quick" | "chat"
+  const [phase, setPhase] = useState("quick");
   const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      text: "Hi! 👋 I'm Redwan's AI assistant. Ask me anything about his work, skills, or projects — or pick a question below.",
-    },
+    { role: "assistant", text: "Hi! I'm Redwan's AI assistant. Ask me anything about his work, skills, or projects — or pick a quick question below." },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -109,32 +140,40 @@ export default function Chatbot() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system: SYSTEM_PROMPT,
-          messages: apiMessages,
-        }),
+        body: JSON.stringify({ system: SYSTEM_PROMPT, messages: apiMessages }),
       });
 
       const responseData = await res.json();
-      const reply = responseData.content?.find(b => b.type === "text")?.text || "Sorry, I couldn't generate a response.";
+
+      if (!res.ok) {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          text: `Something went wrong: ${responseData.error || res.status}. Check that ANTHROPIC_API_KEY is set in Vercel environment variables.`,
+        }]);
+        return;
+      }
+
+      const reply = responseData.content?.find(b => b.type === "text")?.text
+        || "Sorry, I couldn't generate a response.";
       setMessages(prev => [...prev, { role: "assistant", text: reply }]);
-    } catch {
-      setMessages(prev => [...prev, { role: "assistant", text: "Sorry, something went wrong. Please try again." }]);
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        text: "Network error — please check your connection and try again.",
+      }]);
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
-  const handleQuick = (q) => {
-    sendMessage(q);
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(input);
-    }
+  const resetChat = () => {
+    setMessages([{ role: "assistant", text: "Hi! I'm Redwan's AI assistant. Ask me anything about his work, skills, or projects — or pick a quick question below." }]);
+    setPhase("quick");
   };
 
   return (
@@ -145,7 +184,7 @@ export default function Chatbot() {
           30% { transform: translateY(-5px); opacity: 1; }
         }
         @keyframes chatPop {
-          from { opacity: 0; transform: scale(0.92) translateY(12px); }
+          from { opacity: 0; transform: scale(0.9) translateY(16px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
         @keyframes chatMsgIn {
@@ -153,26 +192,24 @@ export default function Chatbot() {
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes fabPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.4); }
-          50% { box-shadow: 0 0 0 10px rgba(0,229,255,0); }
+          0%, 100% { box-shadow: 0 4px 24px rgba(0,229,255,0.35), 0 0 0 0 rgba(0,229,255,0.3); }
+          60% { box-shadow: 0 4px 24px rgba(0,229,255,0.35), 0 0 0 12px rgba(0,229,255,0); }
         }
-        @keyframes badgePop {
-          from { transform: scale(0); }
-          to { transform: scale(1); }
-        }
+        @keyframes badgePop { from { transform:scale(0); } to { transform:scale(1); } }
         .chat-msg { animation: chatMsgIn 0.28s cubic-bezier(.16,1,.3,1); }
         .chat-scrollbar::-webkit-scrollbar { width: 3px; }
         .chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .chat-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.2); border-radius: 2px; }
-        .chat-input:focus { outline: none; border-color: rgba(0,229,255,0.5) !important; box-shadow: 0 0 0 2px rgba(0,229,255,0.08) !important; }
-        .quick-btn:hover { background: rgba(0,229,255,0.12) !important; border-color: rgba(0,229,255,0.5) !important; color: #fff !important; }
+        .chat-input:focus { outline: none; border-color: rgba(0,229,255,0.5) !important; box-shadow: 0 0 0 3px rgba(0,229,255,0.07) !important; }
+        .quick-btn:hover { background: rgba(0,229,255,0.12) !important; border-color: rgba(0,229,255,0.5) !important; color: #fff !important; transform: translateY(-1px); }
         .send-btn:hover:not(:disabled) { background: #00b8cc !important; }
-        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .fab-btn:hover { transform: scale(1.06) !important; }
+        .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .fab-btn { transition: transform 0.2s cubic-bezier(.16,1,.3,1) !important; }
+        .fab-btn:hover { transform: scale(1.08) !important; }
         .reset-btn:hover { color: rgba(0,229,255,0.8) !important; }
       `}</style>
 
-      {/* FLOATING ACTION BUTTON */}
+      {/* FAB */}
       <button
         className="fab-btn"
         onClick={() => setOpen(o => !o)}
@@ -183,26 +220,22 @@ export default function Chatbot() {
           background: `linear-gradient(135deg, ${CYAN}, #0090a8)`,
           border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "transform 0.2s cubic-bezier(.16,1,.3,1)",
+          animation: !open ? "fabPulse 3s ease-in-out infinite" : "none",
           boxShadow: "0 4px 24px rgba(0,229,255,0.35)",
-          animation: !open ? "fabPulse 2.8s ease-in-out infinite" : "none",
         }}
       >
         {open ? (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.8" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         ) : (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#000">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
+          <AgentIcon size={28} color="#000" />
         )}
-        {/* Notification badge */}
         {hasNewMsg && !open && (
           <span style={{
             position: "absolute", top: -3, right: -3,
-            width: 14, height: 14, borderRadius: "50%",
-            background: "#ff4d4d", border: `2px solid ${BG}`,
+            width: 13, height: 13, borderRadius: "50%",
+            background: "#ff4455", border: `2px solid ${BG}`,
             animation: "badgePop 0.3s cubic-bezier(.16,1,.3,1)",
           }} />
         )}
@@ -214,90 +247,62 @@ export default function Chatbot() {
           position: "fixed", bottom: 96, right: 28, zIndex: 9997,
           width: "min(400px, calc(100vw - 40px))",
           height: "min(560px, calc(100vh - 140px))",
-          background: "rgba(10, 10, 16, 0.97)",
-          border: "1px solid rgba(0,229,255,0.2)",
+          background: "rgba(8,8,14,0.98)",
+          border: "1px solid rgba(0,229,255,0.18)",
           borderRadius: 18,
           display: "flex", flexDirection: "column",
           overflow: "hidden",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,229,255,0.05) inset",
-          animation: "chatPop 0.32s cubic-bezier(.16,1,.3,1)",
-          backdropFilter: "blur(20px)",
+          boxShadow: "0 28px 80px rgba(0,0,0,0.75), 0 0 60px rgba(0,229,255,0.04)",
+          animation: "chatPop 0.3s cubic-bezier(.16,1,.3,1)",
+          backdropFilter: "blur(24px)",
         }}>
 
           {/* HEADER */}
           <div style={{
-            padding: "14px 18px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            display: "flex", alignItems: "center", gap: 12,
-            background: "rgba(0,229,255,0.03)",
+            padding: "13px 16px",
+            borderBottom: "1px solid rgba(255,255,255,0.055)",
+            display: "flex", alignItems: "center", gap: 11,
+            background: "rgba(0,229,255,0.025)",
             flexShrink: 0,
           }}>
             <div style={{
-              width: 36, height: 36, borderRadius: "50%",
-              background: `linear-gradient(135deg, rgba(0,229,255,0.2), rgba(0,144,168,0.3))`,
-              border: "1px solid rgba(0,229,255,0.3)",
+              width: 38, height: 38, borderRadius: "50%",
+              background: "linear-gradient(135deg, rgba(0,229,255,0.15), rgba(0,80,100,0.3))",
+              border: "1px solid rgba(0,229,255,0.28)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1rem", flexShrink: 0,
-            }}>🤖</div>
+              flexShrink: 0,
+            }}>
+              <AgentIcon size={22} color={CYAN} />
+            </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.88rem", color: "#fff" }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.87rem", color: "#fff" }}>
                 Ask About Redwan
               </div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", color: CYAN, letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00ff88", display: "inline-block", boxShadow: "0 0 6px #00ff88" }} />
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.58rem", color: CYAN, letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#00ff88", display: "inline-block", boxShadow: "0 0 5px #00ff88" }} />
                 AI POWERED · ALWAYS ON
               </div>
             </div>
             {phase === "chat" && (
-              <button
-                className="reset-btn"
-                onClick={() => { setMessages([{ role: "assistant", text: "Hi! 👋 I'm Redwan's AI assistant. Ask me anything about his work, skills, or projects — or pick a question below." }]); setPhase("quick"); }}
-                title="Reset chat"
-                style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", letterSpacing: "0.08em", textTransform: "uppercase", transition: "color 0.2s", padding: "4px 8px" }}
-              >
+              <button className="reset-btn" onClick={resetChat} title="Reset chat" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.28)", fontFamily: "'DM Mono', monospace", fontSize: "0.58rem", letterSpacing: "0.08em", textTransform: "uppercase", transition: "color 0.2s", padding: "4px 8px" }}>
                 ↺ RESET
               </button>
             )}
           </div>
 
           {/* MESSAGES */}
-          <div
-            className="chat-scrollbar"
-            style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 12 }}
-          >
+          <div className="chat-scrollbar" style={{ flex: 1, overflowY: "auto", padding: "14px 14px 6px", display: "flex", flexDirection: "column", gap: 11 }}>
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className="chat-msg"
-                style={{
-                  display: "flex",
-                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                  gap: 8,
-                  alignItems: "flex-end",
-                }}
-              >
-                {msg.role === "assistant" && (
-                  <div style={{
-                    width: 26, height: 26, borderRadius: "50%",
-                    background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.2)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "0.7rem", flexShrink: 0, marginBottom: 2,
-                  }}>🤖</div>
-                )}
+              <div key={i} className="chat-msg" style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end" }}>
+                {msg.role === "assistant" && <AgentAvatar size={26} />}
                 <div style={{
-                  maxWidth: "82%",
-                  padding: "10px 14px",
+                  maxWidth: "82%", padding: "9px 13px",
                   borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                  background: msg.role === "user"
-                    ? `linear-gradient(135deg, ${CYAN}22, rgba(0,144,168,0.25))`
-                    : "rgba(255,255,255,0.04)",
-                  border: msg.role === "user"
-                    ? `1px solid rgba(0,229,255,0.3)`
-                    : "1px solid rgba(255,255,255,0.07)",
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "0.82rem",
-                  color: msg.role === "user" ? "#e0fbff" : "rgba(255,255,255,0.75)",
-                  lineHeight: 1.65,
+                  background: msg.role === "user" ? "linear-gradient(135deg, rgba(0,229,255,0.14), rgba(0,100,130,0.22))" : "rgba(255,255,255,0.035)",
+                  border: msg.role === "user" ? "1px solid rgba(0,229,255,0.28)" : "1px solid rgba(255,255,255,0.065)",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: "0.81rem",
+                  color: msg.role === "user" ? "#dff9ff" : "rgba(255,255,255,0.78)",
+                  lineHeight: 1.68,
                 }}>
                   {msg.text}
                 </div>
@@ -306,49 +311,31 @@ export default function Chatbot() {
 
             {loading && (
               <div className="chat-msg" style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", flexShrink: 0 }}>🤖</div>
-                <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px 16px 16px 4px" }}>
+                <AgentAvatar size={26} />
+                <div style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.065)", borderRadius: "16px 16px 16px 4px" }}>
                   <TypingDots />
                 </div>
               </div>
             )}
 
-            {/* QUICK QUESTION CHIPS — shown after initial assistant message in quick phase */}
             {phase === "quick" && !loading && (
-              <div className="chat-msg" style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 4 }}>
-                {QUICK_QUESTIONS.map((q) => (
-                  <button
-                    key={q}
-                    className="quick-btn"
-                    onClick={() => handleQuick(q)}
-                    style={{
-                      background: "rgba(0,229,255,0.06)",
-                      border: "1px solid rgba(0,229,255,0.2)",
-                      borderRadius: 100,
-                      padding: "6px 13px",
-                      fontFamily: "'DM Mono', monospace",
-                      fontSize: "0.63rem",
-                      color: "rgba(255,255,255,0.65)",
-                      cursor: "pointer",
-                      letterSpacing: "0.02em",
-                      transition: "all 0.18s",
-                    }}
-                  >
-                    {q}
-                  </button>
+              <div className="chat-msg" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
+                {QUICK_QUESTIONS.map(q => (
+                  <button key={q} className="quick-btn" onClick={() => sendMessage(q)} style={{
+                    background: "rgba(0,229,255,0.05)", border: "1px solid rgba(0,229,255,0.18)",
+                    borderRadius: 100, padding: "5px 12px",
+                    fontFamily: "'DM Mono', monospace", fontSize: "0.61rem",
+                    color: "rgba(255,255,255,0.6)", cursor: "pointer",
+                    letterSpacing: "0.02em", transition: "all 0.16s",
+                  }}>{q}</button>
                 ))}
               </div>
             )}
-
             <div ref={bottomRef} />
           </div>
 
-          {/* INPUT BAR */}
-          <div style={{
-            padding: "10px 14px 14px",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            flexShrink: 0,
-          }}>
+          {/* INPUT */}
+          <div style={{ padding: "9px 13px 13px", borderTop: "1px solid rgba(255,255,255,0.055)", flexShrink: 0 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input
                 ref={inputRef}
@@ -359,16 +346,11 @@ export default function Chatbot() {
                 placeholder="Ask anything about Redwan..."
                 disabled={loading}
                 style={{
-                  flex: 1,
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 10,
-                  padding: "9px 14px",
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "0.82rem",
-                  color: "#fff",
-                  transition: "border-color 0.2s, box-shadow 0.2s",
-                  caretColor: CYAN,
+                  flex: 1, background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.09)", borderRadius: 10,
+                  padding: "9px 13px", fontFamily: "'DM Sans', sans-serif",
+                  fontSize: "0.81rem", color: "#fff",
+                  transition: "border-color 0.2s, box-shadow 0.2s", caretColor: CYAN,
                 }}
               />
               <button
@@ -376,21 +358,20 @@ export default function Chatbot() {
                 onClick={() => sendMessage(input)}
                 disabled={loading || !input.trim()}
                 style={{
-                  width: 38, height: 38, borderRadius: 10,
-                  background: CYAN,
+                  width: 38, height: 38, borderRadius: 10, background: CYAN,
                   border: "none", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0, transition: "background 0.2s",
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="22" y1="2" x2="11" y2="13"/>
                   <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                 </svg>
               </button>
             </div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", color: "rgba(255,255,255,0.18)", textAlign: "center", marginTop: 8, letterSpacing: "0.06em" }}>
-              POWERED BY CLAUDE · PRESS ENTER TO SEND
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.53rem", color: "rgba(255,255,255,0.16)", textAlign: "center", marginTop: 7, letterSpacing: "0.06em" }}>
+              POWERED BY CLAUDE · ENTER TO SEND
             </div>
           </div>
         </div>
