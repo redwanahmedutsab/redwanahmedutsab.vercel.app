@@ -16,6 +16,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid request body" });
     }
 
+    // Gemini doesn't have a system field — inject it as an opening exchange
     const geminiContents = [
       { role: "user", parts: [{ text: system || "" }] },
       { role: "model", parts: [{ text: "Understood. I will answer questions about Redwan based on the information provided." }] },
@@ -28,38 +29,36 @@ export default async function handler(req, res) {
       });
     }
 
-    // Try models in order until one works
-    const models = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-pro"];
-    let response, responseData;
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: geminiContents,
+          generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
+        }),
+      }
+    );
 
-    for (const model of models) {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: geminiContents,
-            generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
-          }),
-        }
-      );
-
-      const text = await response.text();
-      try { responseData = JSON.parse(text); } catch { continue; }
-
-      if (response.ok) break; // success, stop trying
-    }
+    const responseText = await response.text();
+    let responseData;
+    try { responseData = JSON.parse(responseText); }
+    catch { return res.status(500).json({ error: "Invalid JSON from Gemini API" }); }
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: responseData?.error?.message || "Gemini API error",
+        error: responseData.error?.message || "Gemini API error",
       });
     }
 
     const reply = responseData.candidates?.[0]?.content?.parts?.[0]?.text
       || "Sorry, I couldn't generate a response.";
 
+    // Return in same shape Chatbot.jsx expects
     return res.status(200).json({
       content: [{ type: "text", text: reply }],
     });
