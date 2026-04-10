@@ -209,6 +209,7 @@ export default function Chatbot() {
         }
         @keyframes badgePop { from { transform:scale(0); } to { transform:scale(1); } }
         .chat-msg { animation: chatMsgIn 0.28s cubic-bezier(.16,1,.3,1); }
+        .chat-window { touch-action: pan-y; }
         .chat-scrollbar::-webkit-scrollbar { width: 3px; }
         .chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .chat-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.2); border-radius: 2px; }
@@ -216,8 +217,12 @@ export default function Chatbot() {
         .quick-btn:hover { background: rgba(0,229,255,0.12) !important; border-color: rgba(0,229,255,0.5) !important; color: #fff !important; transform: translateY(-1px); }
         .send-btn:hover:not(:disabled) { background: #00b8cc !important; }
         .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .fab-btn { transition: transform 0.2s cubic-bezier(.16,1,.3,1) !important; }
+        .fab-btn { transition: transform 0.2s cubic-bezier(.16,1,.3,1) !important; touch-action: manipulation; }
         .fab-btn:hover { transform: scale(1.08) !important; }
+        @media (max-width: 480px) {
+          .chat-header-title { font-size: 0.82rem !important; }
+          .quick-btn { font-size: 0.58rem !important; padding: 4px 10px !important; }
+        }
         .reset-btn:hover { color: rgba(0,229,255,0.8) !important; }
       `}</style>
 
@@ -227,8 +232,8 @@ export default function Chatbot() {
         onClick={() => setOpen(o => !o)}
         title="Chat with Redwan's AI"
         style={{
-          position: "fixed", bottom: 28, right: 28, zIndex: 9998,
-          width: 56, height: 56, borderRadius: "50%",
+          position: "fixed", bottom: "max(16px, env(safe-area-inset-bottom, 16px))", right: 16, zIndex: 9998,
+          width: 52, height: 52, borderRadius: "50%",
           background: `linear-gradient(135deg, ${CYAN}, #0090a8)`,
           border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -256,9 +261,9 @@ export default function Chatbot() {
       {/* CHAT WINDOW */}
       {open && (
         <div style={{
-          position: "fixed", bottom: 96, right: 28, zIndex: 9997,
-          width: "min(400px, calc(100vw - 40px))",
-          height: "min(560px, calc(100vh - 140px))",
+          position: "fixed", bottom: 80, right: 8, zIndex: 9997,
+          width: "min(400px, calc(100vw - 16px))",
+          height: "min(560px, calc(100dvh - 110px))",
           background: "rgba(8,8,14,0.98)",
           border: "1px solid rgba(0,229,255,0.18)",
           borderRadius: 18,
@@ -267,6 +272,7 @@ export default function Chatbot() {
           boxShadow: "0 28px 80px rgba(0,0,0,0.75), 0 0 60px rgba(0,229,255,0.04)",
           animation: "chatPop 0.3s cubic-bezier(.16,1,.3,1)",
           backdropFilter: "blur(24px)",
+          WebkitOverflowScrolling: "touch",
         }}>
 
           {/* HEADER */}
@@ -312,7 +318,7 @@ export default function Chatbot() {
                   borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                   background: msg.role === "user" ? "linear-gradient(135deg, rgba(0,229,255,0.14), rgba(0,100,130,0.22))" : "rgba(255,255,255,0.035)",
                   border: msg.role === "user" ? "1px solid rgba(0,229,255,0.28)" : "1px solid rgba(255,255,255,0.065)",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: "0.81rem",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: "0.84rem",
                   color: msg.role === "user" ? "#dff9ff" : "rgba(255,255,255,0.78)",
                   lineHeight: 1.68,
                 }}>
@@ -361,7 +367,7 @@ export default function Chatbot() {
                   flex: 1, background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.09)", borderRadius: 10,
                   padding: "9px 13px", fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "0.81rem", color: "#fff",
+                  fontSize: "16px", color: "#fff",
                   transition: "border-color 0.2s, box-shadow 0.2s", caretColor: CYAN,
                 }}
               />
