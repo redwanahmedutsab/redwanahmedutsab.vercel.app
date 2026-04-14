@@ -58,6 +58,7 @@ function MouseTracker() {
     const ring = useRef({x: -999, y: -999});
     const hovering = useRef(false);
     const clicking = useRef(false);
+    const hasMoved = useRef(false);
 
     useEffect(() => {
         // Skip on touch devices
@@ -65,6 +66,19 @@ function MouseTracker() {
 
         const onMove = (e) => {
             mouse.current = {x: e.clientX, y: e.clientY};
+
+            // On first move: show custom cursors, hide native
+            if (!hasMoved.current) {
+                hasMoved.current = true;
+                document.documentElement.style.setProperty("--cursor-display", "block");
+                // Hide native cursor now
+                const style = document.createElement("style");
+                style.id = "hide-cursor";
+                style.textContent = "*, *::before, *::after { cursor: none !important; }";
+                document.head.appendChild(style);
+                if (cursorDotRef.current) cursorDotRef.current.style.opacity = "1";
+                if (cursorRingRef.current) cursorRingRef.current.style.opacity = "1";
+            }
 
             // Spotlight follows cursor with CSS transform (instant)
             if (spotlightRef.current) {
@@ -156,6 +170,9 @@ function MouseTracker() {
             window.removeEventListener("mouseup", onUp);
             document.removeEventListener("mouseover", onOver);
             document.removeEventListener("mouseout", onOut);
+            // Restore native cursor on cleanup
+            const s = document.getElementById("hide-cursor");
+            if (s) s.remove();
         };
     }, []);
 
@@ -177,6 +194,7 @@ function MouseTracker() {
                 background: CYAN,
                 pointerEvents: "none",
                 willChange: "transform",
+                opacity: 0,
                 transition: "opacity 0.2s",
                 boxShadow: `0 0 8px ${CYAN}`,
             }}/>
@@ -187,8 +205,9 @@ function MouseTracker() {
                 border: "1px solid rgba(0,229,255,0.5)",
                 background: "transparent",
                 pointerEvents: "none",
+                opacity: 0,
                 willChange: "transform",
-                transition: "width 0.2s cubic-bezier(.16,1,.3,1), height 0.2s cubic-bezier(.16,1,.3,1), border-color 0.2s, background 0.2s",
+                transition: "width 0.2s cubic-bezier(.16,1,.3,1), height 0.2s cubic-bezier(.16,1,.3,1), border-color 0.2s, background 0.2s, opacity 0.2s",
             }}/>
         </>
     );
@@ -311,7 +330,10 @@ function Nav() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                height: 66
+                minHeight: 66,
+                height: "auto",
+                flexWrap: "nowrap",
+                gap: "0.5rem",
             }}>
                 <a href="#hero" style={{textDecoration: "none", display: "flex", alignItems: "center"}}>
                     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -324,16 +346,17 @@ function Nav() {
                         <circle cx="28" cy="28" r="3" fill="#00e5ff" opacity="0.9"/>
                     </svg>
                 </a>
-                <div style={{display: "flex", gap: "0.25rem", alignItems: "center"}} className="nav-links">
+                <div style={{display: "flex", gap: "0.1rem", alignItems: "center"}} className="nav-links">
                     {links.map(l => (
                         <a key={l} href={`#${l}`} style={{
                             fontFamily: "'DM Mono', monospace",
-                            fontSize: "0.68rem",
-                            letterSpacing: "0.08em",
+                            fontSize: "0.63rem",
+                            letterSpacing: "0.06em",
                             textTransform: "uppercase",
                             textDecoration: "none",
-                            padding: "0.4rem 0.85rem",
+                            padding: "0.35rem 0.6rem",
                             borderRadius: 6,
+                            whiteSpace: "nowrap",
                             color: active === l ? CYAN : "rgba(255,255,255,0.45)",
                             background: active === l ? "rgba(0,229,255,0.07)" : "transparent",
                             border: active === l ? "1px solid rgba(0,229,255,0.18)" : "1px solid transparent",
@@ -428,7 +451,7 @@ function Hero() {
             justifyContent: "center",
             position: "relative",
             overflow: "hidden",
-            padding: "0 1.25rem",
+            padding: "clamp(90px, 12vh, 120px) 1.25rem 2rem",
             width: "100%"
         }}>
             <Particles/>
@@ -1224,15 +1247,16 @@ function Awards() {
                     <div style={{display: "flex", flexDirection: "column", gap: "0.85rem"}}>
                         {data.awards.map((a, i) => (
                             <Reveal key={i} delay={i * 0.07}>
-                                <div style={{
+                                <div className="awards-row" style={{
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: "1.25rem",
+                                    gap: "1rem",
                                     background: "rgba(255,255,255,0.025)",
                                     border: "1px solid rgba(255,255,255,0.07)",
                                     borderRadius: 10,
-                                    padding: "1.1rem 1.5rem",
-                                    transition: "all 0.25s"
+                                    padding: "1rem 1.25rem",
+                                    transition: "all 0.25s",
+                                    flexWrap: "wrap",
                                 }}
                                      onMouseEnter={e => {
                                          e.currentTarget.style.borderColor = "rgba(0,229,255,0.3)";
@@ -1262,22 +1286,22 @@ function Awards() {
                                         fontFamily: "'DM Mono', monospace",
                                         fontSize: "0.65rem",
                                         color: "rgba(255,255,255,0.28)",
-                                        minWidth: 36
+                                        flexShrink: 0,
                                     }}>{a.year}</div>
-                                    <div style={{
+                                    <div className="award-rank" style={{
                                         fontFamily: "'Syne', sans-serif",
                                         fontWeight: 700,
                                         fontSize: "0.92rem",
                                         color: CYAN,
-                                        minWidth: 160,
-                                        flexShrink: 0
+                                        flexShrink: 0,
                                     }}>{a.rank}</div>
                                     <div style={{
                                         fontFamily: "'DM Sans', sans-serif",
                                         fontSize: "0.85rem",
                                         color: "rgba(255,255,255,0.55)",
                                         minWidth: 0,
-                                        wordBreak: "break-word"
+                                        flex: "1 1 180px",
+                                        wordBreak: "break-word",
                                     }}>{a.event}</div>
                                 </div>
                             </Reveal>
@@ -1491,7 +1515,7 @@ export default function App() {
         html { scroll-behavior: smooth; }
         html { overflow-x: hidden; max-width: 100%; }
         body { background: ${BG}; color: #fff; -webkit-font-smoothing: antialiased; overflow-x: hidden; max-width: 100%; position: relative; }
-        @media (pointer: fine) { *, *::before, *::after { cursor: none !important; } }
+        @media (pointer: fine) { /* cursor:none applied dynamically on first mousemove */ }
         @keyframes trailFade { from { opacity: 0.6; transform: scale(1); } to { opacity: 0; transform: scale(0.2); } }
         ::selection { background: ${CYAN}; color: #000; }
         ::-webkit-scrollbar { width: 3px; }
@@ -1501,19 +1525,23 @@ export default function App() {
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(1.4)} }
         @keyframes scrollPulse { 0%,100%{opacity:0.4;transform:scaleY(1)} 50%{opacity:1;transform:scaleY(1.15)} }
-        @media (max-width: 768px) {
+        @media (max-width: 960px) {
           .nav-links { display: none !important; }
           .hamburger { display: flex !important; }
+        }
+        @media (max-width: 768px) {
           .about-grid { grid-template-columns: 1fr !important; gap: 2rem !important; }
           .awards-grid { grid-template-columns: 1fr !important; }
           .projects-grid { grid-template-columns: 1fr !important; }
+          .awards-row { padding: 0.85rem 1rem !important; gap: 0.65rem !important; }
+          .award-rank { font-size: 0.82rem !important; }
         }
         @media (max-width: 640px) {
           html, body { max-width: 100%; overflow-x: hidden; }
           section { padding: 4rem 1.1rem !important; }
-          #hero { padding-left: 1rem !important; padding-right: 1rem !important; }
-          .awards-row { flex-wrap: wrap !important; gap: 0.6rem !important; }
-          .awards-row .award-rank { min-width: unset !important; font-size: 0.78rem !important; }
+          #hero { padding-top: 90px !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+          .awards-row { flex-wrap: wrap !important; gap: 0.6rem !important; align-items: flex-start !important; }
+          .awards-row .award-rank { font-size: 0.78rem !important; }
           footer { padding: 1.5rem 1.1rem !important; flex-direction: column !important; text-align: center !important; }
         }
       `}</style>
