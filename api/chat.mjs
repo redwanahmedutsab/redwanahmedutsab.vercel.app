@@ -16,7 +16,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid request body" });
     }
 
-    // Gemini doesn't have a system field — inject it as an opening exchange
     const geminiContents = [
       { role: "user", parts: [{ text: system || "" }] },
       { role: "model", parts: [{ text: "Understood. I will answer questions about Redwan based on the information provided." }] },
@@ -58,7 +57,6 @@ export default async function handler(req, res) {
     const reply = responseData.candidates?.[0]?.content?.parts?.[0]?.text
       || "Sorry, I couldn't generate a response.";
 
-    // Return in same shape Chatbot.jsx expects
     return res.status(200).json({
       content: [{ type: "text", text: reply }],
     });

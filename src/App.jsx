@@ -5,9 +5,7 @@ import Chatbot from "./Chatbot";
 const CYAN = "#00e5ff";
 const BG = "#08080c";
 
-/* ─────────────────────────────────────────
-   HOOKS
-───────────────────────────────────────── */
+
 const useInView = (threshold = 0.12) => {
     const ref = useRef(null);
     const [visible, setVisible] = useState(false);
@@ -47,9 +45,7 @@ const useActiveSection = () => {
     return active;
 };
 
-/* ─────────────────────────────────────────
-   MOUSE TRACKER
-───────────────────────────────────────── */
+
 function MouseTracker() {
     const spotlightRef = useRef(null);
     const cursorDotRef = useRef(null);
@@ -61,17 +57,14 @@ function MouseTracker() {
     const hasMoved = useRef(false);
 
     useEffect(() => {
-        // Skip on touch devices
         if (window.matchMedia("(pointer: coarse)").matches) return;
 
         const onMove = (e) => {
             mouse.current = {x: e.clientX, y: e.clientY};
 
-            // On first move: show custom cursors, hide native
             if (!hasMoved.current) {
                 hasMoved.current = true;
                 document.documentElement.style.setProperty("--cursor-display", "block");
-                // Hide native cursor now
                 const style = document.createElement("style");
                 style.id = "hide-cursor";
                 style.textContent = "*, *::before, *::after { cursor: none !important; }";
@@ -80,13 +73,11 @@ function MouseTracker() {
                 if (cursorRingRef.current) cursorRingRef.current.style.opacity = "1";
             }
 
-            // Spotlight follows cursor with CSS transform (instant)
             if (spotlightRef.current) {
                 spotlightRef.current.style.background =
                     `radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, rgba(0,229,255,0.055), transparent 70%)`;
             }
 
-            // Dot follows exactly
             if (cursorDotRef.current) {
                 cursorDotRef.current.style.transform = `translate(${e.clientX - 4}px, ${e.clientY - 4}px)`;
             }
@@ -110,7 +101,6 @@ function MouseTracker() {
             }
         };
 
-        // Hover detection on interactive elements
         const onOver = (e) => {
             const el = e.target.closest("a, button, [data-magnetic]");
             if (el) {
@@ -142,7 +132,6 @@ function MouseTracker() {
             }
         };
 
-        // Animate ring with lerp for smooth lag
         let rafId;
         const animate = () => {
             ring.current.x += (mouse.current.x - ring.current.x) * 0.12;
@@ -170,24 +159,20 @@ function MouseTracker() {
             window.removeEventListener("mouseup", onUp);
             document.removeEventListener("mouseover", onOver);
             document.removeEventListener("mouseout", onOut);
-            // Restore native cursor on cleanup
             const s = document.getElementById("hide-cursor");
             if (s) s.remove();
         };
     }, []);
 
-    // Don't render on touch devices
     if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) return null;
 
     return (
         <>
-            {/* Full-page spotlight overlay */}
             <div ref={spotlightRef} style={{
                 position: "fixed", inset: 0, zIndex: 9990,
                 pointerEvents: "none",
                 transition: "background 0.05s",
             }}/>
-            {/* Cursor dot */}
             <div ref={cursorDotRef} style={{
                 position: "fixed", top: 0, left: 0, zIndex: 9995,
                 width: 8, height: 8, borderRadius: "50%",
@@ -198,7 +183,6 @@ function MouseTracker() {
                 transition: "opacity 0.2s",
                 boxShadow: `0 0 8px ${CYAN}`,
             }}/>
-            {/* Cursor ring (lagging) */}
             <div ref={cursorRingRef} style={{
                 position: "fixed", top: 0, left: 0, zIndex: 9994,
                 width: 36, height: 36, borderRadius: "50%",
@@ -213,9 +197,7 @@ function MouseTracker() {
     );
 }
 
-/* ─────────────────────────────────────────
-   REVEAL WRAPPER
-───────────────────────────────────────── */
+
 const Reveal = ({children, delay = 0, from = "bottom"}) => {
     const [ref, visible] = useInView();
     const transform = {
@@ -235,9 +217,7 @@ const Reveal = ({children, delay = 0, from = "bottom"}) => {
     );
 };
 
-/* ─────────────────────────────────────────
-   PARTICLE CANVAS
-───────────────────────────────────────── */
+
 function Particles() {
     const canvasRef = useRef(null);
     useEffect(() => {
@@ -272,7 +252,6 @@ function Particles() {
                 ctx.fillStyle = `rgba(0,229,255,${d.o})`;
                 ctx.fill();
             });
-            // draw faint connections
             for (let i = 0; i < dots.length; i++) {
                 for (let j = i + 1; j < dots.length; j++) {
                     const dx = dots[i].x - dots[j].x;
@@ -299,9 +278,7 @@ function Particles() {
     return <canvas ref={canvasRef} style={{position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none"}}/>;
 }
 
-/* ─────────────────────────────────────────
-   NAV
-───────────────────────────────────────── */
+
 function Nav() {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -415,9 +392,7 @@ function Nav() {
     );
 }
 
-/* ─────────────────────────────────────────
-   HERO
-───────────────────────────────────────── */
+
 function Hero() {
     const [typed, setTyped] = useState("");
     const [countLC, setCountLC] = useState(0);
@@ -434,7 +409,7 @@ function Hero() {
     }, []);
 
     useEffect(() => {
-        const t1 = setInterval(() => setCountLC(c => c < 300 ? c + 5 : 300), 12);
+        const t1 = setInterval(() => setCountLC(c => c < 350 ? c + 5 : 350), 12);
         const t2 = setInterval(() => setCountCF(c => c < 170 ? c + 3 : 170), 12);
         return () => {
             clearInterval(t1);
@@ -463,7 +438,6 @@ function Hero() {
                 backgroundSize: "72px 72px",
                 zIndex: 0
             }}/>
-            {/* glow */}
             <div style={{
                 position: "absolute",
                 top: "38%",
@@ -485,7 +459,6 @@ function Hero() {
                 width: "100%",
                 padding: "0"
             }}>
-                {/* badge */}
                 <div style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -514,7 +487,6 @@ function Hero() {
                     }}>AVAILABLE FOR OPPORTUNITIES</span>
                 </div>
 
-                {/* name */}
                 <h1 style={{
                     fontFamily: "'Syne', sans-serif",
                     fontWeight: 800,
@@ -530,7 +502,6 @@ function Hero() {
                     <span style={{color: CYAN}}>{data.name.split(" ")[1]}</span>{" "}{data.name.split(" ")[2]}
                 </h1>
 
-                {/* typewriter */}
                 <div style={{
                     fontFamily: "'DM Mono', monospace",
                     fontSize: "clamp(0.78rem, 2vw, 0.95rem)",
@@ -544,7 +515,6 @@ function Hero() {
                     {typed}<span style={{color: CYAN, animation: "blink 0.9s step-end infinite"}}>▋</span>
                 </div>
 
-                {/* about */}
                 <p style={{
                     color: "rgba(255,255,255,0.48)",
                     maxWidth: 560,
@@ -558,7 +528,6 @@ function Hero() {
                     {data.about}
                 </p>
 
-                {/* CTAs */}
                 <div style={{
                     display: "flex",
                     gap: "0.85rem",
@@ -573,7 +542,6 @@ function Hero() {
                     <a href="#contact" style={btn("ghost")}>Get in touch</a>
                 </div>
 
-                {/* stats */}
                 <div style={{
                     display: "flex",
                     gap: "1rem",
@@ -626,7 +594,6 @@ function Hero() {
                 </div>
             </div>
 
-            {/* scroll indicator */}
             <div style={{
                 position: "absolute",
                 bottom: "2.5rem",
@@ -666,9 +633,7 @@ const btn = (type) => ({
             {background: "transparent", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.12)"}),
 });
 
-/* ─────────────────────────────────────────
-   ABOUT
-───────────────────────────────────────── */
+
 function About() {
     return (
         <section id="about" style={sec()}>
@@ -743,9 +708,7 @@ function About() {
     );
 }
 
-/* ─────────────────────────────────────────
-   SKILLS
-───────────────────────────────────────── */
+
 function Skills() {
     return (
         <section id="skills" style={sec("rgba(0,229,255,0.015)")}>
@@ -833,9 +796,7 @@ function Skills() {
     );
 }
 
-/* ─────────────────────────────────────────
-   PROJECTS
-───────────────────────────────────────── */
+
 function Projects() {
     const [active, setActive] = useState(0);
     return (
@@ -844,7 +805,6 @@ function Projects() {
                 <Reveal><SLabel>Work</SLabel></Reveal>
                 <Reveal delay={0.08}><STitle>Featured Projects</STitle></Reveal>
 
-                {/* tab selector */}
                 <Reveal delay={0.14}>
                     <div style={{display: "flex", gap: "0.5rem", marginTop: "2.5rem", flexWrap: "wrap"}}>
                         {data.projects.map((p, i) => (
@@ -877,7 +837,6 @@ function Projects() {
                                 borderRadius: 12,
                                 overflow: "hidden"
                             }}>
-                                {/* browser chrome */}
                                 <div style={{
                                     background: "rgba(255,255,255,0.04)",
                                     borderBottom: "1px solid rgba(255,255,255,0.06)",
@@ -921,7 +880,6 @@ function Projects() {
                                         }}>{p.live}</span>
                                     </div>
                                 </div>
-                                {/* project info inside mock */}
                                 <div style={{padding: "2rem"}}>
                                     <div style={{
                                         display: "flex",
@@ -982,7 +940,6 @@ function Projects() {
                             </div>
                         </Reveal>
 
-                        {/* details */}
                         <Reveal delay={0.1} from="right">
                             <div style={{display: "flex", flexDirection: "column", gap: "1.25rem"}}>
                                 <div>
@@ -1031,9 +988,7 @@ function Projects() {
     );
 }
 
-/* ─────────────────────────────────────────
-   EXPERIENCE
-───────────────────────────────────────── */
+
 function Experience() {
     return (
         <section id="experience" style={sec("rgba(0,229,255,0.015)")}>
@@ -1041,7 +996,6 @@ function Experience() {
                 <Reveal><SLabel>Experience</SLabel></Reveal>
                 <Reveal delay={0.08}><STitle>Where I've Worked</STitle></Reveal>
                 <div style={{marginTop: "2.75rem", position: "relative"}}>
-                    {/* timeline line */}
                     <div style={{
                         position: "absolute",
                         left: 0,
@@ -1053,7 +1007,6 @@ function Experience() {
                     {data.experience.map((e, i) => (
                         <Reveal key={i} delay={0.1}>
                             <div style={{paddingLeft: "2.5rem", paddingBottom: "2.5rem", position: "relative"}}>
-                                {/* dot */}
                                 <div style={{
                                     position: "absolute",
                                     left: -5,
@@ -1135,9 +1088,7 @@ function Experience() {
     );
 }
 
-/* ─────────────────────────────────────────
-   RESEARCH
-───────────────────────────────────────── */
+
 function Research() {
     return (
         <section id="research" style={sec()}>
@@ -1232,9 +1183,7 @@ function Research() {
     );
 }
 
-/* ─────────────────────────────────────────
-   AWARDS
-───────────────────────────────────────── */
+
 function Awards() {
     return (
         <section id="awards" style={sec("rgba(0,229,255,0.015)")}>
@@ -1267,7 +1216,6 @@ function Awards() {
                                          e.currentTarget.style.transform = "none";
                                      }}
                                 >
-                                    {/* trophy icon */}
                                     <div style={{
                                         width: 36,
                                         height: 36,
@@ -1311,7 +1259,7 @@ function Awards() {
                     <div style={{display: "flex", flexDirection: "column", gap: "1rem"}}>
                         {[
                             {
-                                val: "300+",
+                                val: "350+",
                                 label: "LeetCode Problems",
                                 href: data.links.leetcode,
                                 sub: "Arrays · DP · Graphs"
@@ -1373,9 +1321,7 @@ function Awards() {
     );
 }
 
-/* ─────────────────────────────────────────
-   CONTACT
-───────────────────────────────────────── */
+
 function Contact() {
     const [copied, setCopied] = useState(false);
     const copy = () => {
@@ -1468,9 +1414,7 @@ function Contact() {
     );
 }
 
-/* ─────────────────────────────────────────
-   SHARED
-───────────────────────────────────────── */
+
 const sec = (bg = "transparent") => ({padding: "7rem 1.5rem", background: bg, width: "100%", boxSizing: "border-box"});
 const wrap = () => ({maxWidth: 1160, margin: "0 auto", width: "100%"});
 
@@ -1503,9 +1447,7 @@ const STitle = ({children}) => (
     }}>{children}</h2>
 );
 
-/* ─────────────────────────────────────────
-   APP
-───────────────────────────────────────── */
+
 export default function App() {
     return (
         <>
