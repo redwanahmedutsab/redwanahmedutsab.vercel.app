@@ -409,7 +409,7 @@ function Hero() {
     }, []);
 
     useEffect(() => {
-        const t1 = setInterval(() => setCountLC(c => c < 350 ? c + 5 : 350), 12);
+        const t1 = setInterval(() => setCountLC(c => c < 400 ? c + 5 : 400), 12);
         const t2 = setInterval(() => setCountCF(c => c < 170 ? c + 3 : 170), 12);
         return () => {
             clearInterval(t1);
@@ -1259,7 +1259,7 @@ function Awards() {
                     <div style={{display: "flex", flexDirection: "column", gap: "1rem"}}>
                         {[
                             {
-                                val: "350+",
+                                val: "400+",
                                 label: "LeetCode Problems",
                                 href: data.links.leetcode,
                                 sub: "Arrays · DP · Graphs"
