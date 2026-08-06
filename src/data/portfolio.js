@@ -59,15 +59,15 @@ export const data = {
 
   experience: [
     {
-      company: "AI Engineering Firm — Confidential",
-      role: "Junior AI Engineer",
-      sub: "Promoted from Trainee AI Engineer, Jul 2026",
-      period: "Feb 2026 – Present",
+      company: "BinaryBrains Technologies",
+      role: "Co-Founder & Co-CEO",
+      sub: "binarybrains.tech",
+      period: "2026 – Present",
       location: "Dhaka, Bangladesh",
       bullets: [
-        "Build LLM-powered microservices with LangChain and RAG pipelines: ingest documents into ChromaDB, embed with Hugging Face models, and serve contextual Q&A endpoints at sub-500ms latency.",
-        "Design agentic AI workflows with LangGraph: multi-step tool-calling agents with persistent memory, web search and code execution tools, and Pydantic-structured output for autonomous multi-turn task completion.",
-        "Engineer scalable REST APIs with Django REST Framework and FastAPI: PostgreSQL schemas with composite indexing, JWT/OAuth2 with RBAC, Celery task queues, and Redis caching; deploy via Docker and GitHub Actions CI/CD to AWS EC2 with Nginx.",
+        "Co-founded a full-service IT and AI company from the ground up, defining its product direction and go-to-market as a solo-run, full-stack-to-branding operation.",
+        "Designed, built, and launched the company site and infrastructure end-to-end in React, deployed on Vercel with a custom domain (binarybrains.tech), including a Gemini-powered chatbot integration.",
+        "Own product strategy and brand direction — positioning, messaging, and LinkedIn presence — alongside the technical build.",
       ],
     },
     {

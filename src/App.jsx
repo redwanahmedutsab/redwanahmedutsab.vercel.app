@@ -1,9 +1,274 @@
-import {useEffect, useState, useRef, useCallback} from "react";
+import {useEffect, useState, useRef, useCallback, useMemo} from "react";
+import {motion, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence} from "framer-motion";
 import {data} from "./data/portfolio";
 import Chatbot from "./Chatbot";
+import {ThemeProvider, ThemedContent, ThemeToggle, useTheme, themeFilter} from "./theme.jsx";
 
 const CYAN = "#00e5ff";
 const BG = "#08080c";
+
+
+/* ------------------------------------------------------------------ */
+/* PRELOADER — typewriter intro + CRT boot sequence                   */
+/* ------------------------------------------------------------------ */
+function Preloader({onDone}) {
+    const [line1, setLine1] = useState("");
+    const [line2, setLine2] = useState("");
+    const [phase, setPhase] = useState("line1"); // line1 -> line2 -> boot -> done
+    const [pct, setPct] = useState(0);
+    const [logIndex, setLogIndex] = useState(0);
+    const [exiting, setExiting] = useState(false);
+
+    const bootLog = [
+        "INITIALIZING SYSTEM",
+        "MOUNTING FILESYSTEM",
+        "LOADING PORTFOLIO MODULES",
+        "READY",
+    ];
+
+    useEffect(() => {
+        if (phase !== "line1") return;
+        const full = data.name.toUpperCase();
+        let i = 0;
+        const t = setInterval(() => {
+            setLine1(full.slice(0, ++i));
+            if (i >= full.length) {
+                clearInterval(t);
+                setTimeout(() => setPhase("line2"), 220);
+            }
+        }, 42);
+        return () => clearInterval(t);
+    }, [phase]);
+
+    useEffect(() => {
+        if (phase !== "line2") return;
+        const full = data.subtitle;
+        let i = 0;
+        const t = setInterval(() => {
+            setLine2(full.slice(0, ++i));
+            if (i >= full.length) {
+                clearInterval(t);
+                setTimeout(() => setPhase("boot"), 260);
+            }
+        }, 20);
+        return () => clearInterval(t);
+    }, [phase]);
+
+    useEffect(() => {
+        if (phase !== "boot") return;
+        const t = setInterval(() => {
+            setPct(p => {
+                const next = Math.min(100, p + 3 + Math.random() * 6);
+                setLogIndex(Math.min(bootLog.length - 1, Math.floor((next / 100) * bootLog.length)));
+                if (next >= 100) {
+                    clearInterval(t);
+                    setTimeout(() => setPhase("done"), 260);
+                }
+                return next;
+            });
+        }, 40);
+        return () => clearInterval(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [phase]);
+
+    useEffect(() => {
+        if (phase !== "done") return;
+        setExiting(true);
+        document.body.style.overflow = "";
+        const t = setTimeout(onDone, 650);
+        return () => clearTimeout(t);
+    }, [phase, onDone]);
+
+    useEffect(() => {
+        document.body.style.overflow = "hidden";
+    }, []);
+
+    return (
+        <div style={{
+            position: "fixed", inset: 0, zIndex: 99999,
+            background: BG,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            opacity: exiting ? 0 : 1,
+            transform: exiting ? "scale(1.03)" : "scale(1)",
+            transition: "opacity 0.6s cubic-bezier(.16,1,.3,1), transform 0.6s cubic-bezier(.16,1,.3,1)",
+            pointerEvents: exiting ? "none" : "auto",
+        }}>
+            <div style={{
+                fontFamily: "'DM Mono', monospace",
+                width: "min(480px, 88vw)",
+                padding: "1.75rem",
+                border: "1px solid rgba(0,229,255,0.18)",
+                borderRadius: 10,
+                background: "rgba(0,229,255,0.02)",
+            }}>
+                <div style={{fontSize: "0.95rem", color: "#fff", letterSpacing: "0.02em", minHeight: "1.4em"}}>
+                    {line1}
+                    {phase === "line1" &&
+                        <span style={{color: CYAN, animation: "blink 0.9s step-end infinite"}}>▋</span>}
+                </div>
+                <div style={{
+                    fontSize: "0.72rem",
+                    color: "rgba(255,255,255,0.4)",
+                    marginTop: "0.6rem",
+                    letterSpacing: "0.03em",
+                    minHeight: "1.4em"
+                }}>
+                    {line2}
+                    {phase === "line2" &&
+                        <span style={{color: CYAN, animation: "blink 0.9s step-end infinite"}}>▋</span>}
+                </div>
+
+                {(phase === "boot" || phase === "done") && (
+                    <div style={{marginTop: "1.6rem"}}>
+                        <div style={{
+                            fontSize: "0.62rem",
+                            color: CYAN,
+                            letterSpacing: "0.15em",
+                            marginBottom: "0.6rem"
+                        }}>
+                            [{String(logIndex + 1).padStart(2, "0")}/{bootLog.length}] {bootLog[logIndex]}...
+                        </div>
+                        <div style={{
+                            height: 4, width: "100%", borderRadius: 2,
+                            background: "rgba(255,255,255,0.08)", overflow: "hidden"
+                        }}>
+                            <div style={{
+                                height: "100%", width: `${pct}%`,
+                                background: CYAN,
+                                boxShadow: `0 0 8px ${CYAN}`,
+                                transition: "width 0.12s linear"
+                            }}/>
+                        </div>
+                        <div style={{
+                            fontSize: "0.62rem",
+                            color: "rgba(255,255,255,0.3)",
+                            marginTop: "0.5rem",
+                            textAlign: "right",
+                            letterSpacing: "0.05em"
+                        }}>{Math.floor(pct)}%</div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/* SCRAMBLE TEXT — characters shuffle briefly before resolving        */
+/* ------------------------------------------------------------------ */
+function Scramble({text, style, startDelay = 0}) {
+    const [display, setDisplay] = useState(text);
+    const chars = "!<>-_\\/[]{}—=+*^?#ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    useEffect(() => {
+        let frame = 0;
+        const totalFrames = 22;
+        let raf;
+        const start = setTimeout(() => {
+            const tick = () => {
+                frame++;
+                const revealed = Math.floor((frame / totalFrames) * text.length);
+                let out = "";
+                for (let i = 0; i < text.length; i++) {
+                    if (text[i] === " " || text[i] === "\n") {
+                        out += text[i];
+                    } else if (i < revealed) {
+                        out += text[i];
+                    } else {
+                        out += chars[Math.floor(Math.random() * chars.length)];
+                    }
+                }
+                setDisplay(out);
+                if (frame < totalFrames) {
+                    raf = setTimeout(tick, 28);
+                } else {
+                    setDisplay(text);
+                }
+            };
+            tick();
+        }, startDelay);
+        return () => {
+            clearTimeout(start);
+            clearTimeout(raf);
+        };
+    }, [text, startDelay]);
+    return <span style={style}>{display}</span>;
+}
+
+/* ------------------------------------------------------------------ */
+/* MAGNETIC — buttons/links subtly follow the cursor when nearby      */
+/* ------------------------------------------------------------------ */
+function Magnetic({children, strength = 0.35, range = 70}) {
+    const ref = useRef(null);
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+    const sx = useSpring(x, {stiffness: 200, damping: 18, mass: 0.3});
+    const sy = useSpring(y, {stiffness: 200, damping: 18, mass: 0.3});
+
+    useEffect(() => {
+        if (window.matchMedia("(pointer: coarse)").matches) return;
+        const el = ref.current;
+        if (!el) return;
+        const onMove = (e) => {
+            const rect = el.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dx = e.clientX - cx;
+            const dy = e.clientY - cy;
+            const dist = Math.hypot(dx, dy);
+            const padded = range + rect.width / 2;
+            if (dist < padded) {
+                x.set(dx * strength);
+                y.set(dy * strength);
+            } else {
+                x.set(0);
+                y.set(0);
+            }
+        };
+        window.addEventListener("mousemove", onMove, {passive: true});
+        return () => window.removeEventListener("mousemove", onMove);
+    }, [range, strength, x, y]);
+
+    return (
+        <motion.span ref={ref} data-magnetic style={{x: sx, y: sy, display: "inline-block"}}>
+            {children}
+        </motion.span>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/* TILT CARD — subtle 3D lean toward cursor                           */
+/* ------------------------------------------------------------------ */
+function TiltCard({children, max = 8}) {
+    const ref = useRef(null);
+    const rx = useMotionValue(0);
+    const ry = useMotionValue(0);
+    const srx = useSpring(rx, {stiffness: 150, damping: 20});
+    const sry = useSpring(ry, {stiffness: 150, damping: 20});
+
+    const onMove = (e) => {
+        if (window.matchMedia("(pointer: coarse)").matches) return;
+        const rect = ref.current.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width;
+        const py = (e.clientY - rect.top) / rect.height;
+        ry.set((px - 0.5) * max * 2);
+        rx.set(-(py - 0.5) * max * 2);
+    };
+    const onLeave = () => {
+        rx.set(0);
+        ry.set(0);
+    };
+
+    return (
+        <motion.div
+            ref={ref}
+            onMouseMove={onMove}
+            onMouseLeave={onLeave}
+            style={{rotateX: srx, rotateY: sry, transformPerspective: 900, willChange: "transform"}}
+        >
+            {children}
+        </motion.div>
+    );
+}
 
 
 const useInView = (threshold = 0.12) => {
@@ -23,6 +288,15 @@ const useInView = (threshold = 0.12) => {
         return () => obs.disconnect();
     }, [threshold]);
     return [ref, visible];
+};
+
+/* Entrance/exit variants keyed by direction. Used by <Reveal from="..."> below. */
+const REVEAL_VARIANTS = {
+    bottom: {hidden: {opacity: 0, y: 40}, visible: {opacity: 1, y: 0}},
+    top: {hidden: {opacity: 0, y: -40}, visible: {opacity: 1, y: 0}},
+    left: {hidden: {opacity: 0, x: -44}, visible: {opacity: 1, x: 0}},
+    right: {hidden: {opacity: 0, x: 44}, visible: {opacity: 1, x: 0}},
+    scale: {hidden: {opacity: 0, scale: 0.72}, visible: {opacity: 1, scale: 1}},
 };
 
 const useActiveSection = () => {
@@ -46,176 +320,52 @@ const useActiveSection = () => {
 };
 
 
-function MouseTracker() {
-    const spotlightRef = useRef(null);
-    const cursorDotRef = useRef(null);
-    const cursorRingRef = useRef(null);
-    const mouse = useRef({x: -999, y: -999});
-    const ring = useRef({x: -999, y: -999});
-    const hovering = useRef(false);
-    const clicking = useRef(false);
-    const hasMoved = useRef(false);
 
-    useEffect(() => {
-        if (window.matchMedia("(pointer: coarse)").matches) return;
 
-        const onMove = (e) => {
-            mouse.current = {x: e.clientX, y: e.clientY};
-
-            if (!hasMoved.current) {
-                hasMoved.current = true;
-                document.documentElement.style.setProperty("--cursor-display", "block");
-                const style = document.createElement("style");
-                style.id = "hide-cursor";
-                style.textContent = "*, *::before, *::after { cursor: none !important; }";
-                document.head.appendChild(style);
-                if (cursorDotRef.current) cursorDotRef.current.style.opacity = "1";
-                if (cursorRingRef.current) cursorRingRef.current.style.opacity = "1";
-            }
-
-            if (spotlightRef.current) {
-                spotlightRef.current.style.background =
-                    `radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, rgba(0,229,255,0.055), transparent 70%)`;
-            }
-
-            if (cursorDotRef.current) {
-                cursorDotRef.current.style.transform = `translate(${e.clientX - 4}px, ${e.clientY - 4}px)`;
-            }
-        };
-
-        const onDown = () => {
-            clicking.current = true;
-            if (cursorDotRef.current) cursorDotRef.current.style.transform += " scale(0.6)";
-            if (cursorRingRef.current) {
-                cursorRingRef.current.style.width = "22px";
-                cursorRingRef.current.style.height = "22px";
-                cursorRingRef.current.style.borderColor = CYAN;
-            }
-        };
-        const onUp = () => {
-            clicking.current = false;
-            if (cursorRingRef.current) {
-                cursorRingRef.current.style.width = "36px";
-                cursorRingRef.current.style.height = "36px";
-                cursorRingRef.current.style.borderColor = "rgba(0,229,255,0.5)";
-            }
-        };
-
-        const onOver = (e) => {
-            const el = e.target.closest("a, button, [data-magnetic]");
-            if (el) {
-                hovering.current = true;
-                if (cursorRingRef.current) {
-                    cursorRingRef.current.style.width = "56px";
-                    cursorRingRef.current.style.height = "56px";
-                    cursorRingRef.current.style.borderColor = CYAN;
-                    cursorRingRef.current.style.background = "rgba(0,229,255,0.06)";
-                }
-                if (cursorDotRef.current) {
-                    cursorDotRef.current.style.opacity = "0";
-                }
-            }
-        };
-        const onOut = (e) => {
-            const el = e.target.closest("a, button, [data-magnetic]");
-            if (el) {
-                hovering.current = false;
-                if (cursorRingRef.current) {
-                    cursorRingRef.current.style.width = "36px";
-                    cursorRingRef.current.style.height = "36px";
-                    cursorRingRef.current.style.borderColor = "rgba(0,229,255,0.5)";
-                    cursorRingRef.current.style.background = "transparent";
-                }
-                if (cursorDotRef.current) {
-                    cursorDotRef.current.style.opacity = "1";
-                }
-            }
-        };
-
-        let rafId;
-        const animate = () => {
-            ring.current.x += (mouse.current.x - ring.current.x) * 0.12;
-            ring.current.y += (mouse.current.y - ring.current.y) * 0.12;
-            if (cursorRingRef.current) {
-                const w = parseFloat(cursorRingRef.current.style.width) || 36;
-                const h = parseFloat(cursorRingRef.current.style.height) || 36;
-                cursorRingRef.current.style.transform =
-                    `translate(${ring.current.x - w / 2}px, ${ring.current.y - h / 2}px)`;
-            }
-            rafId = requestAnimationFrame(animate);
-        };
-        animate();
-
-        window.addEventListener("mousemove", onMove, {passive: true});
-        window.addEventListener("mousedown", onDown);
-        window.addEventListener("mouseup", onUp);
-        document.addEventListener("mouseover", onOver);
-        document.addEventListener("mouseout", onOut);
-
-        return () => {
-            cancelAnimationFrame(rafId);
-            window.removeEventListener("mousemove", onMove);
-            window.removeEventListener("mousedown", onDown);
-            window.removeEventListener("mouseup", onUp);
-            document.removeEventListener("mouseover", onOver);
-            document.removeEventListener("mouseout", onOut);
-            const s = document.getElementById("hide-cursor");
-            if (s) s.remove();
-        };
-    }, []);
-
-    if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) return null;
-
+/*
+ * Reveal: directional scroll entrance, using framer-motion's `whileInView`.
+ * `viewport={{ once: false }}` means it reverts to the hidden state whenever the element
+ * scrolls back out of view — which is what gives every section its "exit" animation for
+ * free, without a separate exit prop, since the reveal simply replays on re-entry.
+ */
+const Reveal = ({children, delay = 0, from = "bottom", duration = 0.75}) => {
+    const variants = REVEAL_VARIANTS[from] || REVEAL_VARIANTS.bottom;
     return (
-        <>
-            <div ref={spotlightRef} style={{
-                position: "fixed", inset: 0, zIndex: 9990,
-                pointerEvents: "none",
-                transition: "background 0.05s",
-            }}/>
-            <div ref={cursorDotRef} style={{
-                position: "fixed", top: 0, left: 0, zIndex: 9995,
-                width: 8, height: 8, borderRadius: "50%",
-                background: CYAN,
-                pointerEvents: "none",
-                willChange: "transform",
-                opacity: 0,
-                transition: "opacity 0.2s",
-                boxShadow: `0 0 8px ${CYAN}`,
-            }}/>
-            <div ref={cursorRingRef} style={{
-                position: "fixed", top: 0, left: 0, zIndex: 9994,
-                width: 36, height: 36, borderRadius: "50%",
-                border: "1px solid rgba(0,229,255,0.5)",
-                background: "transparent",
-                pointerEvents: "none",
-                opacity: 0,
-                willChange: "transform",
-                transition: "width 0.2s cubic-bezier(.16,1,.3,1), height 0.2s cubic-bezier(.16,1,.3,1), border-color 0.2s, background 0.2s, opacity 0.2s",
-            }}/>
-        </>
-    );
-}
-
-
-const Reveal = ({children, delay = 0, from = "bottom"}) => {
-    const [ref, visible] = useInView();
-    const transform = {
-        bottom: visible ? "translateY(0)" : "translateY(36px)",
-        left: visible ? "translateX(0)" : "translateX(-36px)",
-        right: visible ? "translateX(0)" : "translateX(36px)",
-    }[from];
-    return (
-        <div ref={ref} style={{
-            opacity: visible ? 1 : 0,
-            transform,
-            transition: `opacity 0.75s cubic-bezier(.16,1,.3,1) ${delay}s, transform 0.75s cubic-bezier(.16,1,.3,1) ${delay}s`,
-            height: "100%",
-        }}>
+        <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{once: false, amount: 0.15}}
+            variants={variants}
+            transition={{duration, delay, ease: [.16, 1, .3, 1]}}
+            style={{height: "100%"}}
+        >
             {children}
-        </div>
+        </motion.div>
     );
 };
+
+/* Stagger: wraps a list so children animate in one-after-another, and back out on exit. */
+const StaggerGroup = ({children, style, stagger = 0.08}) => (
+    <motion.div
+        style={style}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{once: false, amount: 0.1}}
+        variants={{
+            hidden: {},
+            visible: {transition: {staggerChildren: stagger}},
+        }}
+    >
+        {children}
+    </motion.div>
+);
+
+const StaggerItem = ({children, from = "bottom"}) => (
+    <motion.div variants={REVEAL_VARIANTS[from] || REVEAL_VARIANTS.bottom}
+                transition={{duration: 0.55, ease: [.16, 1, .3, 1]}}>
+        {children}
+    </motion.div>
+);
 
 
 function Particles() {
@@ -283,6 +433,7 @@ function Nav() {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const active = useActiveSection();
+    const {theme} = useTheme();
 
     useEffect(() => {
         const fn = () => setScrolled(window.scrollY > 40);
@@ -293,12 +444,15 @@ function Nav() {
     const links = ["about", "skills", "projects", "experience", "research", "awards", "contact"];
 
     return (
+        // filter applied directly to this fixed element (not inherited from an ancestor) —
+        // see the note above ThemeProvider.
         <nav style={{
             position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
             background: scrolled ? "rgba(8,8,12,0.88)" : "transparent",
             backdropFilter: scrolled ? "blur(16px)" : "none",
             borderBottom: scrolled ? "1px solid rgba(255,255,255,0.05)" : "none",
-            transition: "all 0.4s cubic-bezier(.16,1,.3,1)",
+            filter: themeFilter(theme),
+            transition: "background 0.4s cubic-bezier(.16,1,.3,1), backdrop-filter 0.4s, border-color 0.4s, filter 0.6s cubic-bezier(.16,1,.3,1)",
             padding: "0 1.25rem",
         }}>
             <div style={{
@@ -325,7 +479,7 @@ function Nav() {
                 </a>
                 <div style={{display: "flex", gap: "0.1rem", alignItems: "center"}} className="nav-links">
                     {links.map(l => (
-                        <a key={l} href={`#${l}`} style={{
+                        <a key={l} href={`#${l}`} className="navlink" style={{
                             fontFamily: "'DM Mono', monospace",
                             fontSize: "0.63rem",
                             letterSpacing: "0.06em",
@@ -334,6 +488,7 @@ function Nav() {
                             padding: "0.35rem 0.6rem",
                             borderRadius: 6,
                             whiteSpace: "nowrap",
+                            position: "relative",
                             color: active === l ? CYAN : "rgba(255,255,255,0.45)",
                             background: active === l ? "rgba(0,229,255,0.07)" : "transparent",
                             border: active === l ? "1px solid rgba(0,229,255,0.18)" : "1px solid transparent",
@@ -348,19 +503,22 @@ function Nav() {
                         >{l}</a>
                     ))}
                 </div>
-                <button onClick={() => setMenuOpen(!menuOpen)} className="hamburger"
-                        style={{
-                            display: "none",
-                            background: "none",
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            borderRadius: 6,
-                            cursor: "pointer",
-                            color: "#fff",
-                            fontSize: "1rem",
-                            padding: "0.4rem 0.6rem"
-                        }}>
-                    {menuOpen ? "✕" : "☰"}
-                </button>
+                <div style={{display: "flex", alignItems: "center", gap: "0.6rem"}}>
+                    <ThemeToggle/>
+                    <button onClick={() => setMenuOpen(!menuOpen)} className="hamburger"
+                            style={{
+                                display: "none",
+                                background: "none",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                                borderRadius: 6,
+                                cursor: "pointer",
+                                color: "#fff",
+                                fontSize: "1rem",
+                                padding: "0.4rem 0.6rem"
+                            }}>
+                        {menuOpen ? "✕" : "☰"}
+                    </button>
+                </div>
             </div>
             {menuOpen && (
                 <div style={{
@@ -398,6 +556,10 @@ function Hero() {
     const [countLC, setCountLC] = useState(0);
     const [countCF, setCountCF] = useState(0);
     const full = data.subtitle;
+    const heroRef = useRef(null);
+    const {scrollYProgress} = useScroll({target: heroRef, offset: ["start start", "end start"]});
+    const gridY = useTransform(scrollYProgress, [0, 1], [0, 90]);
+    const glowY = useTransform(scrollYProgress, [0, 1], [0, 220]);
 
     useEffect(() => {
         let i = 0;
@@ -418,7 +580,7 @@ function Hero() {
     }, []);
 
     return (
-        <section id="hero" style={{
+        <section id="hero" ref={heroRef} style={{
             minHeight: "100vh",
             display: "flex",
             flexDirection: "column",
@@ -430,13 +592,14 @@ function Hero() {
             width: "100%"
         }}>
             <Particles/>
-            {/* grid */}
-            <div style={{
+            {/* grid — parallax: drifts slower than the page scroll for a sense of depth */}
+            <motion.div style={{
                 position: "absolute",
                 inset: 0,
                 backgroundImage: "linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px)",
                 backgroundSize: "72px 72px",
-                zIndex: 0
+                zIndex: 0,
+                y: gridY,
             }}/>
             <div style={{
                 position: "absolute",
@@ -445,11 +608,17 @@ function Hero() {
                 transform: "translate(-50%,-50%)",
                 width: "min(700px, 100vw)",
                 height: "min(700px, 100vw)",
-                borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(0,229,255,0.06) 0%, transparent 65%)",
                 pointerEvents: "none",
                 zIndex: 0
-            }}/>
+            }}>
+                <motion.div style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "50%",
+                    background: "radial-gradient(circle, rgba(0,229,255,0.06) 0%, transparent 65%)",
+                    y: glowY,
+                }}/>
+            </div>
 
             <div style={{
                 textAlign: "center",
@@ -498,8 +667,12 @@ function Hero() {
                     opacity: 0,
                     animation: "fadeUp 0.7s ease 0.35s forwards"
                 }}>
-                    {data.name.split(" ")[0]}<br/>
-                    <span style={{color: CYAN}}>{data.name.split(" ")[1]}</span>{" "}{data.name.split(" ")[2]}
+                    {/* terminal-flavored scramble/decode: characters shuffle briefly before resolving */}
+                    <Scramble text={data.name.split(" ")[0]} startDelay={500}/><br/>
+                    <span style={{color: CYAN}}>
+                        <Scramble text={data.name.split(" ")[1]} startDelay={650}/>
+                    </span>{" "}
+                    <Scramble text={data.name.split(" ")[2]} startDelay={750}/>
                 </h1>
 
                 <div style={{
@@ -538,60 +711,65 @@ function Hero() {
                     animation: "fadeUp 0.7s ease 1.05s forwards"
                 }}>
                     <a href={data.links.github} target="_blank" rel="noreferrer" style={btn("outline")}>GitHub ↗</a>
-                    <a href={data.links.linkedin} target="_blank" rel="noreferrer" style={btn("solid")}>LinkedIn ↗</a>
+                    <Magnetic>
+                        <a href={data.links.linkedin} target="_blank" rel="noreferrer"
+                           style={btn("solid")}>LinkedIn ↗</a>
+                    </Magnetic>
                     <a href="#contact" style={btn("ghost")}>Get in touch</a>
                 </div>
 
-                <div style={{
+                {/* stat badges: scale/"pop" bounce entrance since each is a key highlight */}
+                <StaggerGroup style={{
                     display: "flex",
                     gap: "1rem",
                     justifyContent: "center",
                     marginTop: "3.5rem",
-                    opacity: 0,
-                    animation: "fadeUp 0.7s ease 1.25s forwards",
                     flexWrap: "wrap"
-                }}>
+                }} stagger={0.1}>
                     {[
                         {val: `${countLC}+`, label: "LeetCode", href: data.links.leetcode},
                         {val: `${countCF}+`, label: "Codeforces", href: data.links.codeforces},
                         {val: "3.69", label: "GPA / 4.00", href: "#about"},
                     ].map(s => (
-                        <a key={s.label} href={s.href} target="_blank" rel="noreferrer" style={{
-                            textDecoration: "none",
-                            textAlign: "center",
-                            background: "rgba(255,255,255,0.03)",
-                            border: "1px solid rgba(255,255,255,0.07)",
-                            borderRadius: 10,
-                            padding: "1rem 1.75rem",
-                            transition: "border-color 0.25s, transform 0.25s"
-                        }}
-                           onMouseEnter={e => {
-                               e.currentTarget.style.borderColor = "rgba(0,229,255,0.25)";
-                               e.currentTarget.style.transform = "translateY(-2px)";
-                           }}
-                           onMouseLeave={e => {
-                               e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
-                               e.currentTarget.style.transform = "none";
-                           }}
-                        >
-                            <div style={{
-                                fontFamily: "'Syne', sans-serif",
-                                fontWeight: 800,
-                                fontSize: "1.5rem",
-                                color: CYAN,
-                                lineHeight: 1
-                            }}>{s.val}</div>
-                            <div style={{
-                                fontFamily: "'DM Mono', monospace",
-                                fontSize: "0.6rem",
-                                color: "rgba(255,255,255,0.35)",
-                                letterSpacing: "0.12em",
-                                textTransform: "uppercase",
-                                marginTop: 6
-                            }}>{s.label}</div>
-                        </a>
+                        <StaggerItem key={s.label} from="scale">
+                            <a href={s.href} target="_blank" rel="noreferrer" style={{
+                                textDecoration: "none",
+                                textAlign: "center",
+                                display: "block",
+                                background: "rgba(255,255,255,0.03)",
+                                border: "1px solid rgba(255,255,255,0.07)",
+                                borderRadius: 10,
+                                padding: "1rem 1.75rem",
+                                transition: "border-color 0.25s, transform 0.25s"
+                            }}
+                               onMouseEnter={e => {
+                                   e.currentTarget.style.borderColor = "rgba(0,229,255,0.25)";
+                                   e.currentTarget.style.transform = "translateY(-2px)";
+                               }}
+                               onMouseLeave={e => {
+                                   e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+                                   e.currentTarget.style.transform = "none";
+                               }}
+                            >
+                                <div style={{
+                                    fontFamily: "'Syne', sans-serif",
+                                    fontWeight: 800,
+                                    fontSize: "1.5rem",
+                                    color: CYAN,
+                                    lineHeight: 1
+                                }}>{s.val}</div>
+                                <div style={{
+                                    fontFamily: "'DM Mono', monospace",
+                                    fontSize: "0.6rem",
+                                    color: "rgba(255,255,255,0.35)",
+                                    letterSpacing: "0.12em",
+                                    textTransform: "uppercase",
+                                    marginTop: 6
+                                }}>{s.label}</div>
+                            </a>
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerGroup>
             </div>
 
             <div style={{
@@ -829,8 +1007,9 @@ function Projects() {
                 {data.projects.map((p, i) => i !== active ? null : (
                     <div key={p.name} className="projects-grid"
                          style={{marginTop: "1.5rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem"}}>
-                        {/* browser mockup */}
+                        {/* browser mockup — subtle 3D tilt toward the cursor on hover */}
                         <Reveal delay={0.05} from="left">
+                          <TiltCard>
                             <div style={{
                                 background: "rgba(255,255,255,0.025)",
                                 border: "1px solid rgba(255,255,255,0.08)",
@@ -938,6 +1117,7 @@ function Projects() {
                                     </div>
                                 </div>
                             </div>
+                          </TiltCard>
                         </Reveal>
 
                         <Reveal delay={0.1} from="right">
@@ -1368,15 +1548,17 @@ function Contact() {
                         flexWrap: "wrap",
                         marginBottom: "3rem"
                     }}>
-                        <button onClick={copy} style={{
-                            ...btn("solid"),
-                            cursor: "pointer",
-                            background: copied ? "#00c97a" : CYAN,
-                            borderColor: copied ? "#00c97a" : CYAN,
-                            transition: "all 0.3s"
-                        }}>
-                            {copied ? "✓ Copied!" : `✉ ${data.email}`}
-                        </button>
+                        <Magnetic>
+                            <button onClick={copy} style={{
+                                ...btn("solid"),
+                                cursor: "pointer",
+                                background: copied ? "#00c97a" : CYAN,
+                                borderColor: copied ? "#00c97a" : CYAN,
+                                transition: "all 0.3s"
+                            }}>
+                                {copied ? "✓ Copied!" : `✉ ${data.email}`}
+                            </button>
+                        </Magnetic>
                         <a href={`tel:${data.phone}`} style={btn("outline")}>{data.phone}</a>
                     </div>
                 </Reveal>
@@ -1448,7 +1630,29 @@ const STitle = ({children}) => (
 );
 
 
+/* Fixed backdrop whose hue drifts slowly as the user scrolls, tying sections together.
+   Applies themeFilter() to itself directly (not via an ancestor) — see the note above
+   ThemeProvider for why that distinction matters for fixed-position elements. */
+function ScrollGradientBg() {
+    const {theme} = useTheme();
+    const {scrollYProgress} = useScroll();
+    const hue = useTransform(scrollYProgress, [0, 1], [0, 45]);
+    const filter = useTransform(hue, h => `hue-rotate(${h}deg) ${themeFilter(theme)}`);
+    return (
+        <motion.div style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: -1,
+            pointerEvents: "none",
+            background: "radial-gradient(circle at 20% 15%, rgba(0,229,255,0.05), transparent 55%), radial-gradient(circle at 85% 80%, rgba(0,229,255,0.04), transparent 50%)",
+            filter,
+            transition: "filter 0.6s cubic-bezier(.16,1,.3,1)",
+        }}/>
+    );
+}
+
 export default function App() {
+    const [loading, setLoading] = useState(true);
     return (
         <>
             <style>{`
@@ -1456,17 +1660,31 @@ export default function App() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
         html { overflow-x: hidden; max-width: 100%; }
-        body { background: ${BG}; color: #fff; -webkit-font-smoothing: antialiased; overflow-x: hidden; max-width: 100%; position: relative; }
-        @media (pointer: fine) { /* cursor:none applied dynamically on first mousemove */ }
-        @keyframes trailFade { from { opacity: 0.6; transform: scale(1); } to { opacity: 0; transform: scale(0.2); } }
-        ::selection { background: ${CYAN}; color: #000; }
+        body { background: ${BG}; color: #fff; -webkit-font-smoothing: antialiased; overflow-x: hidden; max-width: 100%; position: relative; transition: background 0.6s, color 0.6s; }
+        /* Outer chrome (browser scrollbar, elastic-overscroll gutter) sits outside the
+           invert-filtered theme wrapper, so it gets its own light-mode colors here. */
+        [data-theme="light"] body { background: #f5f7f8; color: #0a0a0a; }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: ${BG}; }
         ::-webkit-scrollbar-thumb { background: ${CYAN}44; border-radius: 2px; }
+        [data-theme="light"] ::-webkit-scrollbar-track { background: #f5f7f8; }
+        ::selection { background: ${CYAN}; color: #000; }
         @keyframes fadeUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(1.4)} }
         @keyframes scrollPulse { 0%,100%{opacity:0.4;transform:scaleY(1)} 50%{opacity:1;transform:scaleY(1.15)} }
+        /* underline draw-on-hover for nav links */
+        .navlink::after {
+          content: "";
+          position: absolute;
+          left: 0.6rem; right: 0.6rem; bottom: 0.15rem;
+          height: 1px;
+          background: ${CYAN};
+          transform: scaleX(0);
+          transform-origin: left;
+          transition: transform 0.3s cubic-bezier(.16,1,.3,1);
+        }
+        .navlink:hover::after { transform: scaleX(1); }
         @media (max-width: 960px) {
           .nav-links { display: none !important; }
           .hamburger { display: flex !important; }
@@ -1487,41 +1705,50 @@ export default function App() {
           footer { padding: 1.5rem 1.1rem !important; flex-direction: column !important; text-align: center !important; }
         }
       `}</style>
-            <MouseTracker/>
-            <Nav/>
-            <main>
-                <Hero/>
-                <About/>
-                <Skills/>
-                <Projects/>
-                <Experience/>
-                <Research/>
-                <Awards/>
-                <Contact/>
-            </main>
-            <Chatbot/>
-            <footer style={{
-                borderTop: "1px solid rgba(255,255,255,0.05)",
-                padding: "2rem 1.5rem",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: "1rem"
-            }}>
-                <span style={{
-                    fontFamily: "'DM Mono', monospace",
-                    fontSize: "0.62rem",
-                    color: "rgba(255,255,255,0.18)",
-                    letterSpacing: "0.1em"
-                }}>© {new Date().getFullYear()} REDWAN AHMED UTSAB</span>
-                <span style={{
-                    fontFamily: "'DM Mono', monospace",
-                    fontSize: "0.62rem",
-                    color: "rgba(255,255,255,0.18)",
-                    letterSpacing: "0.1em"
-                }}>BUILT WITH REACT · DEPLOYED ON VERCEL</span>
-            </footer>
+
+            <AnimatePresence>
+                {loading && <Preloader onDone={() => setLoading(false)}/>}
+            </AnimatePresence>
+
+            <ThemeProvider>
+                <ScrollGradientBg/>
+                <Nav/>
+                <ThemedContent>
+                    <main>
+                        <Hero/>
+                        <About/>
+                        <Skills/>
+                        <Projects/>
+                        <Experience/>
+                        <Research/>
+                        <Awards/>
+                        <Contact/>
+                    </main>
+                    <footer style={{
+                        borderTop: "1px solid rgba(255,255,255,0.05)",
+                        padding: "2rem 1.5rem",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: "1rem"
+                    }}>
+                        <span style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "0.62rem",
+                            color: "rgba(255,255,255,0.18)",
+                            letterSpacing: "0.1em"
+                        }}>© {new Date().getFullYear()} REDWAN AHMED UTSAB</span>
+                        <span style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "0.62rem",
+                            color: "rgba(255,255,255,0.18)",
+                            letterSpacing: "0.1em"
+                        }}>BUILT WITH REACT · DEPLOYED ON VERCEL</span>
+                    </footer>
+                </ThemedContent>
+                <Chatbot/>
+            </ThemeProvider>
         </>
     );
 }

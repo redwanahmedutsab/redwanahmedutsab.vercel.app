@@ -1,5 +1,6 @@
 import {useState, useRef, useEffect} from "react";
 import {data} from "./data/portfolio";
+import {useTheme, themeFilter} from "./theme.jsx";
 
 const CYAN = "#00e5ff";
 const BG = "#08080c";
@@ -104,6 +105,7 @@ function TypingDots() {
 
 
 export default function Chatbot() {
+    const {theme} = useTheme();
     const [open, setOpen] = useState(false);
     const [phase, setPhase] = useState("quick");
     const [messages, setMessages] = useState([
@@ -248,6 +250,11 @@ export default function Chatbot() {
                     display: "flex", alignItems: "center", justifyContent: "center",
                     animation: !open ? "fabPulse 3s ease-in-out infinite" : "none",
                     boxShadow: "0 4px 24px rgba(0,229,255,0.35)",
+                    // filter applied directly to this fixed element (not via an ancestor) so
+                    // its own `position: fixed` still resolves against the viewport — see
+                    // the note in theme.jsx above ThemeProvider.
+                    filter: themeFilter(theme),
+                    transition: "filter 0.6s cubic-bezier(.16,1,.3,1)",
                 }}
             >
                 {open ? (
@@ -284,6 +291,8 @@ export default function Chatbot() {
                     animation: "chatPop 0.3s cubic-bezier(.16,1,.3,1)",
                     backdropFilter: "blur(24px)",
                     WebkitOverflowScrolling: "touch",
+                    filter: themeFilter(theme),
+                    transition: "filter 0.6s cubic-bezier(.16,1,.3,1)",
                 }}>
 
 
